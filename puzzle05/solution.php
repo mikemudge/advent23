@@ -1,5 +1,7 @@
 <?php
 
+require_once 'puzzle05/Range.php';
+
 $contents = file_get_contents(dirname(__FILE__) . "/input");
 $lines = explode("\n", $contents);
 $part1 = 0;
@@ -13,7 +15,7 @@ $seeds = array_map('intval', explode(" ", explode("seeds: ", $lines[0])[1]));
 echo json_encode($seeds) . PHP_EOL;
 
 $i = 1;
-$maps = [];
+$convertPipeline = [];
 while($i < count($lines) - 1) {
     $mapName = explode(" map:", $lines[++$i])[0];
     $currentMap = [];
@@ -24,52 +26,64 @@ while($i < count($lines) - 1) {
         }
         // Add to current mapping.
         [$dest, $source, $len] = array_map('intval', explode(" ", $line));
-        $currentMap[] = [$dest, $source, $len];
-        // Use $dest/$source?
+
+
+        $range = new Range($source, $source + $len);
+        $mapping = $dest - $source;
+        $currentMap[] = [$range, $mapping];
     }
-    $maps[$mapName] = $currentMap;
-    echo($mapName . " " . json_encode($currentMap) . PHP_EOL);
+
+    usort($currentMap, function(array $r1, array $r2) {
+        return $r1[0]->getStart() - $r2[0]->getStart();
+    });
+
+    // Fill in gaps of currentMap
+    $start = 0;
+    $currentMap2 = [];
+    foreach ($currentMap as $mapItem) {
+        /** @var Range $range */
+        [$range, $offset] = $mapItem;
+        if ($start !== $range->getStart()) {
+            // A gap was found, add the gap as a new range.
+            $filler = new Range($start, $range->getStart());
+            // The mapping for missing ranges is 0.
+            $currentMap2[] = [$filler, 0];
+        }
+        // Put the existing range in the new map.
+        $currentMap2[] = [$range, $offset];
+        // Shift the new start along to the end of the current range.
+        $start = $range->getEnd();
+    }
+
+    $convertPipeline[] = [
+        'name' => $mapName,
+        'map' => $currentMap2
+    ];
+    echo($mapName . PHP_EOL);
+    foreach ($currentMap2 as $map) {
+        echo($map[0] . " offsets ". $map[1] . PHP_EOL);
+    }
 }
 
-
 function performMapping($map, $sourceId) {
-    foreach ($map as $ranges) {
-        [$dest, $source, $len] = $ranges;
-        if ($sourceId >= $source && $sourceId < $source + $len) {
-//            echo("Using $source <= $sourceId < " . ($source + $len));
-            return $dest + $sourceId - $source;
+    foreach ($map as $mapItem) {
+        /** @var Range $range */
+        [$range, $offset] = $mapItem;
+        if ($range->contains($sourceId)) {
+            return $sourceId + $offset;
         }
     }
+    // Beyond the end of known ranges will perform the identity mapping.
     return $sourceId;
 }
 
-function fullMapping($maps, $seed, $verbose = true) {
-    if ($verbose)
-        echo("Seed $seed, ");
-    $soil = performMapping($maps['seed-to-soil'], $seed);
-    if ($verbose)
-        echo("Soil $soil, ");
-    $fertilizer = performMapping($maps['soil-to-fertilizer'], $soil);
-    if ($verbose)
-        echo("Fert $fertilizer, ");
-    $water = performMapping($maps['fertilizer-to-water'], $fertilizer);
-    if ($verbose)
-        echo("Water $water, ");
-    $light = performMapping($maps['water-to-light'], $water);
-    if ($verbose)
-        echo("Light $light, ");
-    $temperature = performMapping($maps['light-to-temperature'], $light);
-    if ($verbose)
-        echo("Temp $temperature, ");
-    $humidity = performMapping($maps['temperature-to-humidity'], $temperature);
-    if ($verbose)
-        echo("Humidity $humidity\n");
-    $location = performMapping($maps['humidity-to-location'], $humidity);
-    return $location;
-}
-
 foreach ($seeds as $seed) {
-    $loc = fullMapping($maps, $seed);
+    $it = $seed;
+    foreach ($convertPipeline as $stage) {
+        $it = performMapping($stage['map'], $it);
+//        echo($stage['name'] . " -> $it\n");
+    }
+    $loc = $it;
     echo("Seed $seed is at location $loc\n");
     if (!$part1) {
         $part1 = $loc;
@@ -77,25 +91,83 @@ foreach ($seeds as $seed) {
         $part1 = min($loc, $part1);
     }
 }
+
+function getRange($map, $num) {
+    foreach ($map['map'] as $mapItem) {
+        [$range, $offset] = $mapItem;
+        if ($range->contains($num)) {
+            return [$range, $offset];
+        }
+    }
+    // Return the remaining integer space with no offset (identity mapping).
+    return [new Range($range->getEnd(), PHP_INT_MAX), 0];
+}
+
+function rangeMap($map, Range $sourceRange): array {
+    $destRanges = [];
+    $rangeStart = $sourceRange->getStart();
+    while ($rangeStart < $sourceRange->getEnd()) {
+        // Find a dest range which covers rangeStart.
+        [$range, $offset] = getRange($map, $rangeStart);
+
+//        echo ("Found a range covering $rangeStart " . $range . " with offset $offset\n");
+
+        // Need to determine how much of the source range this covers?
+
+        // Use the max of the 2 range start points.
+        $start = max($rangeStart, $range->getStart());
+        // And the min of the 2 range end points.
+        $end = min($sourceRange->getEnd(), $range->getEnd());
+
+        // Add the offset to convert into the destination range.
+        $r = new Range($start + $offset, $end + $offset);
+//        echo ("Adding a dest range " . $r . "\n");
+        $destRanges[] = $r;
+
+        // $end should always be > start to have some coverage.
+        if ($end <= $start) {
+            throw new RuntimeException("Coverage is too little for $r");
+        }
+
+        $rangeStart = $end;
+    }
+
+    return $destRanges;
+}
+
+function getMin($maps, $i, Range $sourceRange) {
+    if ($i >= count($maps)) {
+        // At the end of the convert the min is just the lowest value.
+        return $sourceRange->getStart();
+    }
+
+//    echo ("Recurse level $i, mapping " . $maps[$i]['name'] . " " . $sourceRange . "\n");
+
+    // Map the current range into its set of destination ranges.
+    $destRanges = rangeMap($maps[$i], $sourceRange);
+
+//    echo ("Found " . count($destRanges) . " ranges\n");
+
+    $result = PHP_INT_MAX;
+    foreach ($destRanges as $range) {
+        // recurse into the next material to find the min of the dest range.
+        $tmp = getMin($maps, $i + 1, $range);
+        $result = min($result, $tmp);
+    }
+    return $result;
+}
+
+echo("\n### Part 2 ###\n\n");
+// Need a different approach to scale for part 2, need to work with ranges more efficiently.
+$part2 = PHP_INT_MAX;
 for ($i = 0; $i < count($seeds); $i += 2) {
     $rangeStart = $seeds[$i];
     $rangeLen = $seeds[$i + 1];
-    echo("Range: " . $rangeStart . " len: " . $rangeLen . "\n");
+    $range = new Range($rangeStart, $rangeStart + $rangeLen);
+    $tmp = getMin($convertPipeline, 0, $range);
+    echo("$range found min $tmp\n");
+    $part2 = min($part2, $tmp);
 }
-
-// This approach doesn't scale, need to work with ranges more efficiently.
-//for ($i = 0; $i < count($seeds); $i += 2) {
-//    $rangeStart = $seeds[$i];
-//    $rangeLen = $seeds[$i + 1];
-//    for ($seed = $rangeStart; $seed < $rangeStart + $rangeLen; $seed++) {
-//        $loc = fullMapping($maps, $seed, false);
-//        if (!$part2) {
-//            $part2 = $loc;
-//        } else {
-//            $part2 = min($loc, $part2);
-//        }
-//    }
-//}
 
 echo("Part 1: $part1". PHP_EOL);
 echo("Part 2: $part2". PHP_EOL);
