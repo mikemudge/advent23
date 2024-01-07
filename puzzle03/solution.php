@@ -38,7 +38,7 @@ $gears = [];
 for ($y = 0; $y < $grid->getHeight(); $y++) {
     for ($x = 0; $x < $grid->getWidth(); $x++) {
         $gridLoc = $grid->get($x,$y);
-        if ($gridLoc->getData() == "*") {
+        if ($gridLoc->getKey() == "*") {
             $gear = new Gear();
             $gridLoc->setData($gear);
             $gears[] = $gear;
@@ -64,7 +64,7 @@ for ($y = 0; $y < $grid->getHeight(); $y++) {
     $cur = 0;
     $adjacentGears = [];
     for ($x = 0; $x < $grid->getWidth(); $x++) {
-        $c = $grid->get($x, $y)->getData();
+        $c = $grid->get($x, $y)->getKey();
         if (is_numeric($c)) {
             $cur *= 10;
             $cur += intval($c);
@@ -75,11 +75,11 @@ for ($y = 0; $y < $grid->getHeight(); $y++) {
                     if ($loc == null) {
                         continue;
                     }
-                    $s = $loc->getData();
+                    $s = $loc->getKey();
                     if ($s == '.' || is_numeric($s)) {
                         continue;
                     }
-                    if (is_a($s, Gear::class)) {
+                    if ($s == "*") {
                         $adjacentGears[$loc->getLocationString()] = $loc;
                     }
                     // Other characters are engine symbols.

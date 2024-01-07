@@ -2,13 +2,15 @@
 
 class GridLocation {
     private mixed $data;
+    private string $key;
     private int $x;
     private int $y;
 
-    public function __construct(int $x, int $y, mixed $data) {
+    public function __construct(int $x, int $y, string $key) {
         $this->x = $x;
         $this->y = $y;
-        $this->data = $data;
+        $this->key = $key;
+        $this->data = null;
     }
 
     public function setData($data) {
@@ -19,8 +21,16 @@ class GridLocation {
         return $this->data;
     }
 
+    public function getKey() {
+        return $this->key;
+    }
+
     public function getLocationString() {
         return "$this->x,$this->y";
+    }
+
+    public function __toString() {
+        return "$this->x,$this->y ($this->key)";
     }
 }
 
@@ -80,5 +90,16 @@ class Grid {
             $this->get($x + 1, $y + 1),
         ];
         return $result;
+    }
+
+    public function find(string $string) {
+        for ($y = 0; $y < $this->height; $y++) {
+            for ($x = 0; $x < $this->width; $x++) {
+                if ($this->data[$y][$x]->getKey() == $string) {
+                    return $this->data[$y][$x];
+                }
+            }
+        }
+        return $this->oobValue;
     }
 }
