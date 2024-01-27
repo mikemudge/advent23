@@ -64,6 +64,14 @@ class GridLocation {
     public function setKey(string $key) {
         $this->key = $key;
     }
+
+    public function getX(): int {
+        return $this->x;
+    }
+
+    public function getY(): int {
+        return $this->y;
+    }
 }
 
 class Grid {
