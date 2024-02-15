@@ -142,4 +142,24 @@ class Grid {
         }
         return $this->oobValue;
     }
+
+    public function show() {
+        for ($y = 0; $y < $this->height; $y++) {
+            $keys = [];
+            for ($x = 0; $x < $this->width; $x++) {
+                $keys[] = $this->data[$y][$x]->getKey();
+            }
+            echo(join($keys) . "\n");
+        }
+    }
+
+    public function toIdString(): string {
+        $result = [];
+        for ($y = 0; $y < $this->height; $y++) {
+            for ($x = 0; $x < $this->width; $x++) {
+                $result[] = $this->data[$y][$x]->getKey();
+            }
+        }
+        return join($result);
+    }
 }
