@@ -115,6 +115,10 @@ class Grid {
         return $this->data[$y][$x];
     }
 
+    public function bottomRight(): GridLocation {
+        return $this->get($this->height - 1, $this->width - 1);
+    }
+
     /**
      * @return GridLocation[]
      */
