@@ -35,6 +35,18 @@ class GridLocation {
         return "$this->x,$this->y ($this->key)";
     }
 
+    /**
+     * @return GridLocation[]
+     */
+    public function getAdjacent(): array {
+        return [
+            $this->north(),
+            $this->east(),
+            $this->south(),
+            $this->west()
+        ];
+    }
+
     public function north(): ?GridLocation {
         return $this->grid->get($this->x, $this->y - 1);
     }
@@ -104,6 +116,7 @@ class Grid {
     public function getHeight(): int {
         return $this->height;
     }
+
     public function get(int $x, int $y): ?GridLocation {
         if ($y < 0 || $y >= $this->height) {
             return $this->oobValue;
@@ -147,6 +160,18 @@ class Grid {
         return $this->oobValue;
     }
 
+    public function count(string $string): int {
+        $cnt = 0;
+        for ($y = 0; $y < $this->height; $y++) {
+            for ($x = 0; $x < $this->width; $x++) {
+                if ($this->data[$y][$x]->getKey() == $string) {
+                    $cnt++;
+                }
+            }
+        }
+        return $cnt;
+    }
+
     public function show() {
         for ($y = 0; $y < $this->height; $y++) {
             $keys = [];
@@ -165,5 +190,13 @@ class Grid {
             }
         }
         return join($result);
+    }
+
+    public function forEach(Closure $fun): void {
+        for ($y = 0; $y < $this->height; $y++) {
+            for ($x = 0; $x < $this->width; $x++) {
+                $fun($this->get($x, $y));
+            }
+        }
     }
 }
