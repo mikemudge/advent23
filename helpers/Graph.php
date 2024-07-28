@@ -5,16 +5,19 @@ class GraphNode {
     private string $id;
     private array $data;
     private array $children;
+    private array $reachable;
 
     public function __construct(Graph $graph, string $id) {
         $this->graph = $graph;
         $this->id = $id;
         $this->data = [];
         $this->children = [];
+        $this->reachable = [];
     }
 
     public function addChild(GraphNode $b, int $dis): void {
         $this->children[] = [$b, $dis];
+        $this->reachable[$b->getId()] = true;
     }
 
     public function getId(): string {
@@ -25,6 +28,10 @@ class GraphNode {
         return $this->children;
     }
 
+    /** Returns an array of string id's => true for the nodes this can reach directly */
+    public function getReachable(): array {
+        return $this->reachable;
+    }
 }
 
 class Graph {
@@ -38,6 +45,10 @@ class Graph {
         if (!array_key_exists($id, $this->nodes)) {
             $this->nodes[$id] = new GraphNode($this, $id);
         }
+        return $this->nodes[$id];
+    }
+
+    public function getNode(string $id): GraphNode {
         return $this->nodes[$id];
     }
 
@@ -55,5 +66,9 @@ class Graph {
             }
             echo($node->getId() . " connections: " . join(" and ", $connections) . "\n");
         }
+    }
+
+    public function getNodes() {
+        return $this->nodes;
     }
 }

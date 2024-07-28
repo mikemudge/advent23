@@ -56,11 +56,11 @@ class Hail {
         $t1 = ($this->y * $h2->vx - $h2->y * $h2->vx - $this->x * $h2->vy + $h2->x * $h2->vy) / ($this->vx * $h2->vy - $this->vy * $h2->vx);
         $t2 = ($this->x - $h2->x + $this->vx * $t1) / $h2->vx;
         return [$t1, $t2];
-   }
+    }
 
-   public function getLocationAtTime(float $t) {
+    public function getLocationAtTime(float $t) {
         return [$this->x + $this->vx * $t, $this->y + $this->vy * $t];
-   }
+    }
 }
 
 $hail = [];
